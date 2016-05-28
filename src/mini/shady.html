@@ -43,17 +43,6 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
         if (!this.__dom) {
           this.__dom = null;
         }
-        if (!this._ownerShadyRoot) {
-          this._ownerShadyRoot = undefined;
-        }
-      },
-
-      // called as part of content initialization, prior to template stamping
-      _poolContent: function() {
-        if (this._useContent) {
-          // capture lightChildren to help reify dom scoping
-          TreeApi.Logical.saveChildNodes(this);
-        }
       },
 
       // called as part of content initialization, after template stamping
@@ -70,115 +59,12 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
         }
       },
 
-      _createLocalRoot: function() {
-        this.shadyRoot = this.root;
-        this.shadyRoot._distributionClean = false;
-        this.shadyRoot._hasDistributed = false;
-        this.shadyRoot._isShadyRoot = true;
-        this.shadyRoot._dirtyRoots = [];
-        // capture insertion point list
-        var i$ = this.shadyRoot._insertionPoints = !this._notes ||
-          this._notes._hasContent ?
-          this.shadyRoot.querySelectorAll('content') : [];
-        // save logical tree info
-        // a. for shadyRoot
-        // b. for insertion points (fallback)
-        // c. for parents of insertion points
-        TreeApi.Logical.saveChildNodes(this.shadyRoot);
-        for (var i=0, c; i < i$.length; i++) {
-          c = i$[i];
-          TreeApi.Logical.saveChildNodes(c);
-          TreeApi.Logical.saveChildNodes(c.parentNode);
-        }
-        this.shadyRoot.host = this;
-      },
-
-      /**
-       * Force this element to distribute its children to its local dom.
-       * A user should call `distributeContent` if distribution has been
-       * invalidated due to changes to selectors on child elements that
-       * effect distribution that were not made via `Polymer.dom`.
-       * For example, if an element contains an insertion point with
-       * `<content select=".foo">` and a `foo` class is added to a child,
-       * then `distributeContent` must be called to update
-       * local dom distribution.
-       * @method distributeContent
-       * @param {boolean} updateInsertionPoints Shady DOM does not detect
-       *   <content> insertion that is nested in a sub-tree being appended.
-       *   Set to true to distribute to newly added nested <content>'s.
-       */
-      distributeContent: function(updateInsertionPoints) {
-        if (this.shadyRoot) {
-          this.shadyRoot._invalidInsertionPoints =
-            this.shadyRoot._invalidInsertionPoints || updateInsertionPoints;
-          // Distribute the host that's the top of this element's distribution
-          // tree. Distributing that host will *always* distibute this element.
-          var host = getTopDistributingHost(this);
-          Polymer.dom(this)._lazyDistribute(host);
-        }
-      },
-
-      _distributeContent: function() {
-        if (this._useContent && !this.shadyRoot._distributionClean) {
-          if (this.shadyRoot._invalidInsertionPoints) {
-            Polymer.dom(this)._updateInsertionPoints(this);
-            this.shadyRoot._invalidInsertionPoints = false;
-          }
-          // logically distribute self
-          this._beginDistribute();
-          this._distributeDirtyRoots();
-          this._finishDistribute();
-        }
-      },
-
-      _beginDistribute: function() {
-        if (this._useContent && DomApi.hasInsertionPoint(this.shadyRoot)) {
-          // reset distributions
-          this._resetDistribution();
-          // compute which nodes should be distributed where
-          // TODO(jmesserly): this is simplified because we assume a single
-          // ShadowRoot per host and no `<shadow>`.
-          this._distributePool(this.shadyRoot, this._collectPool());
-        }
-      },
-
       _distributeDirtyRoots: function() {
         var c$ = this.shadyRoot._dirtyRoots;
         for (var i=0, l= c$.length, c; (i<l) && (c=c$[i]); i++) {
           c._distributeContent();
         }
         this.shadyRoot._dirtyRoots = [];
-      },
-
-      _finishDistribute: function() {
-        // compose self
-        if (this._useContent) {
-          // note: it's important to mark this clean before distribution
-          // so that attachment that provokes additional distribution (e.g.
-          // adding something to your parentNode) works
-          this.shadyRoot._distributionClean = true;
-          if (DomApi.hasInsertionPoint(this.shadyRoot)) {
-            this._composeTree();
-            // NOTE: send a signal to insertion points that we have distributed
-            // which informs effective children observers
-            notifyContentObservers(this.shadyRoot);
-          } else {
-            if (!this.shadyRoot._hasDistributed) {
-              TreeApi.Composed.clearChildNodes(this);
-              this.appendChild(this.shadyRoot);
-            } else {
-              // simplified non-tree walk composition
-              var children = this._composeNode(this);
-              this._updateChildNodes(this, children);
-            }
-          }
-          // NOTE: send a signal to any Polymer.dom node observers
-          // to report the initial set of childNodes
-          if (!this.shadyRoot._hasDistributed) {
-            notifyInitialDistribution(this);
-          }
-          this.shadyRoot._hasDistributed = true;
-        }
       },
 
       /**
@@ -439,41 +325,6 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
     function isInsertionPoint(node) {
       // TODO(jmesserly): we could add back 'shadow' support here.
       return node.localName == 'content';
-    }
-
-    // returns the host that's the top of this host's distribution tree
-    function getTopDistributingHost(host) {
-      while (host && hostNeedsRedistribution(host)) {
-        host = host.domHost;
-      }
-      return host;
-    }
-
-    // Return true if a host's children includes
-    // an insertion point that selects selectively
-    function hostNeedsRedistribution(host) {
-      var c$ = TreeApi.Logical.getChildNodes(host);
-      for (var i=0, c; i < c$.length; i++) {
-        c = c$[i];
-        if (c.localName && c.localName === 'content') {
-          return host.domHost;
-        }
-      }
-    }
-
-    function notifyContentObservers(root) {
-      for (var i=0, c; i < root._insertionPoints.length; i++) {
-        c = root._insertionPoints[i];
-        if (DomApi.hasApi(c)) {
-          Polymer.dom(c).notifyObserver();
-        }
-      }
-    }
-
-    function notifyInitialDistribution(host) {
-      if (DomApi.hasApi(host)) {
-        Polymer.dom(host).notifyObserver();
-      }
     }
 
     var needsUpgrade = window.CustomElements && !CustomElements.useNative;

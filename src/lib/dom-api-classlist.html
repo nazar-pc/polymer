@@ -14,11 +14,9 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
 
   var DomApi = Polymer.DomApi.ctor;
 
-  var useShadow = Polymer.Settings.useShadow;
-
   /**
-   * DomApi.classList allows maniuplation of `classList` compatible with 
-   * Polymer.dom. The general usage is 
+   * DomApi.classList allows maniuplation of `classList` compatible with
+   * Polymer.dom. The general usage is
    * `Polymer.dom(node).classList.method(arguments)` where methods and arguments
    * match native DOM.
    */
@@ -55,7 +53,7 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
     },
 
     _distributeParent: function() {
-      if (!useShadow) {
+      if (!true) {
         this.domApi._maybeDistributeParent();
       }
     },

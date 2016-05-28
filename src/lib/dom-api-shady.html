@@ -21,7 +21,7 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
   var CONTENT = DomApi.CONTENT;
 
   // *************** Configure DomApi for Shady DOM!! ***************
-  if (Settings.useShadow) {
+  if (true) {
     return;
   }
 
@@ -64,8 +64,6 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
             dom(parent).notifyObserver();
           }
           this._removeNode(node);
-        } else {
-          this._removeOwnerShadyRoot(node);
         }
       }
       if (!this._addNode(node, ref_node)) {
@@ -175,7 +173,6 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
           this._lazyDistribute(root.host);
         }
       }
-      this._removeOwnerShadyRoot(node);
       if (root) {
         this._removeNodeFromHost(root.host, node);
       }
@@ -188,10 +185,6 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
       return node;
     },
 
-    _hasCachedOwnerRoot: function(node) {
-      return Boolean(node._ownerShadyRoot !== undefined);
-    },
-
     getOwnerRoot: function() {
       return this._ownerShadyRootForNode(this.node);
     },
@@ -200,8 +193,7 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
       if (!node) {
         return;
       }
-      var root = node._ownerShadyRoot;
-      if (root === undefined) {
+      var root;
         if (node._isShadyRoot) {
           root = node;
         } else {
@@ -213,15 +205,6 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
            root = null;
           }
         }
-        // memo-ize result for performance but only memo-ize a false-y
-        // result if node is in the document. This avoids a problem where a root
-        // can be cached while an element is inside a fragment.
-        // If this happens and we cache the result, the value can become stale
-        // because for perf we avoid processing the subtree of added fragments.
-        if (root || document.documentElement.contains(node)) {
-          node._ownerShadyRoot = root;
-        }
-      }
       return root;
     },
 
@@ -343,17 +326,6 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
         }
         node = TreeApi.Logical.getParentNode(node);
       }
-    },
-
-    _removeOwnerShadyRoot: function(node) {
-      // optimization: only reset the tree if node is actually in a root
-      if (this._hasCachedOwnerRoot(node)) {
-        var c$ = TreeApi.Logical.getChildNodes(node);
-        for (var i=0, l=c$.length, n; (i<l) && (n=c$[i]); i++) {
-          this._removeOwnerShadyRoot(n);
-        }
-      }
-      node._ownerShadyRoot = undefined;
     },
 
     // TODO(sorvell): This will fail if distribution that affects this
