@@ -275,6 +275,22 @@
   });
 </script>
 
+<dom-module id="x-textarea">
+  <template>
+    <style>
+      :host {
+        border: 4px solid black;
+      }
+    </style>
+  </template>
+  <script>
+    Polymer({
+      is: 'x-textarea',
+      extends: 'textarea'
+    });
+  </script>
+</dom-module>
+
 <dom-module id="x-Mixed-Case">
   <style>
     :host {
